@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"log/slog"
 
+	// Importamos para manejar rutas
 	"github.com/BurntSushi/toml"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/text/language"
@@ -29,21 +30,28 @@ func New(translationsFS embed.FS, defaultLang language.Tag) (*Bundle, error) {
 	bundle.RegisterUnmarshalFunc("yaml", yaml.Unmarshal)
 	bundle.RegisterUnmarshalFunc("yml", yaml.Unmarshal) // Añadimos yml como alias de yaml
 
-	// Leemos el directorio raíz del sistema de archivos incrustado.
-	files, err := fs.ReadDir(translationsFS, ".")
-	if err != nil {
-		return nil, fmt.Errorf("no se pudo leer el directorio de traducciones incrustado: %w", err)
-	}
-	// 5. Iteramos sobre los archivos encontrados y los cargamos en el bundle.
-	// Esto carga automáticamente cualquier idioma que añadas (active.es.yaml, active.fr.yaml, etc.).
-	for _, file := range files {
-		if !file.IsDir() {
-			slog.Debug("Cargando archivo de traducción", "archivo", file.Name())
-			_, err := bundle.LoadMessageFileFS(translationsFS, file.Name())
-			if err != nil {
-				slog.Warn("No se pudo cargar o parsear un archivo de traducción", "archivo", file.Name(), "error", err)
-			}
+	// Usamos WalkDir para recorrer todos los archivos en el FS incrustado.
+	// 	// Usamos WalkDir para recorrer todos los archivos en el FS incrustado.
+	err := fs.WalkDir(translationsFS, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
 		}
+		if d.IsDir() {
+			return nil // Saltamos los directorios
+		}
+
+		// --- LOG DE DEPURACIÓN CLAVE ---
+		// Esto nos confirmará en la consola si los archivos se están viendo.
+		slog.Debug("Intentando cargar archivo de traducción desde embed", "ruta", path)
+
+		// Cargamos el archivo usando su ruta completa dentro del FS.
+		if _, loadErr := bundle.LoadMessageFileFS(translationsFS, path); loadErr != nil {
+			slog.Warn("No se pudo cargar o parsear un archivo de traducción", "ruta", path, "error", loadErr)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error recorriendo el directorio de traducciones incrustado: %w", err)
 	}
 
 	return &Bundle{i18nBundle: bundle}, nil
