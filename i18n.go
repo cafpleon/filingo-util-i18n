@@ -14,6 +14,19 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// BundleKey define un tipo para las llaves de nuestros paquetes de traducción,
+// dándonos seguridad de tipos.
+type BundleKey string
+
+// Constantes para cada paquete de traducción en nuestro ecosistema.
+const (
+	BundleKeySeguridad BundleKey = "seguridad"
+	BundleKeyMaestros  BundleKey = "maestros"
+	BundlePcaseBot     BundleKey = "pcase-bot"
+	// Si mañana creas 'filingo-core-facturacion', añadirías aquí:
+	// BundleKeyFacturacion BundleKey = "facturacion"
+)
+
 // Bundle es el objeto principal que contiene todas las traducciones cargadas.
 type Bundle struct {
 	i18nBundle *i18n.Bundle
